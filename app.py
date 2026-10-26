@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from models import ReportCreate, TranslationRequest
-from database import init_db, get_connection, log_activity, reset_database
+from database import init_db, get_connection, log_activity, reset_database, db_lock
 from ai_service import ai_service, SUPPORTED_LANGUAGES
 
 app = FastAPI(title="PRAVAHA Multilingual Crisis Intelligence", version="1.1.0")
@@ -99,6 +99,19 @@ def list_reports():
 
 @app.post("/api/reports")
 def submit_report(payload: ReportCreate):
+    extraction = ai_service.extract_report(
+        text=payload.text,
+        user_language=payload.language or "Auto",
+        location_hint=payload.location
+    )
+    timestamp = datetime.now().isoformat()
+    needs_json = json.dumps(extraction.get("needs", []))
+    claims_json = json.dumps(extraction.get("claims", []))
+
+    with db_lock:
+        return _persist_report(payload, extraction, timestamp, needs_json, claims_json)
+
+def _persist_report(payload: ReportCreate, extraction: dict, timestamp: str, needs_json: str, claims_json: str):
     conn = get_connection()
     c = conn.cursor()
 
@@ -106,17 +119,6 @@ def submit_report(payload: ReportCreate):
     c.execute("SELECT COUNT(*) as count FROM reports")
     idx = c.fetchone()["count"] + 1
     report_id = f"REP-{idx:03d}"
-
-    # Multilingual AI Extraction & Normalization
-    extraction = ai_service.extract_report(
-        text=payload.text,
-        user_language=payload.language or "Auto",
-        location_hint=payload.location
-    )
-    
-    timestamp = datetime.now().isoformat()
-    needs_json = json.dumps(extraction.get("needs", []))
-    claims_json = json.dumps(extraction.get("claims", []))
 
     # Fetch existing incidents for canonical correlation
     c.execute("SELECT * FROM incidents")
