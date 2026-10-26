@@ -218,6 +218,21 @@
             <span id="incident-count-badge" class="px-2 py-0.5 rounded-full bg-slate-800 text-[11px] font-mono text-slate-300">0 Active</span>
           </div>
 
+          <!-- Quick Filter & Search Bar -->
+          <div class="p-2.5 bg-slate-950/90 border-b border-slate-800 flex flex-col gap-2">
+            <div class="relative">
+              <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-500 text-xs"></i>
+              <input type="text" id="incident-search-input" oninput="filterIncidents()" placeholder="Filter incidents or locations..." 
+                     class="w-full bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-sans">
+            </div>
+            <div class="flex items-center gap-1.5 text-[11px] overflow-x-auto">
+              <button onclick="setIncidentFilter('ALL')" id="filter-btn-ALL" class="incident-filter-btn px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-medium">All</button>
+              <button onclick="setIncidentFilter('CRITICAL')" id="filter-btn-CRITICAL" class="incident-filter-btn px-2 py-0.5 rounded bg-slate-900 text-slate-400 hover:text-rose-300 border border-slate-800">Critical</button>
+              <button onclick="setIncidentFilter('CORROBORATED')" id="filter-btn-CORROBORATED" class="incident-filter-btn px-2 py-0.5 rounded bg-slate-900 text-slate-400 hover:text-blue-300 border border-slate-800">Corroborated</button>
+              <button onclick="setIncidentFilter('CONFLICTING')" id="filter-btn-CONFLICTING" class="incident-filter-btn px-2 py-0.5 rounded bg-slate-900 text-slate-400 hover:text-amber-300 border border-slate-800">Conflicting</button>
+            </div>
+          </div>
+
           <div id="incident-list" class="flex-1 overflow-y-auto p-3 space-y-2.5">
             <div class="text-center py-12 text-slate-500 text-xs">
               <i class="fa-solid fa-radar text-2xl mb-2 text-slate-600 block"></i>
@@ -301,8 +316,12 @@
                   <span class="font-bold text-cyan-300 flex items-center gap-1.5">
                     <i class="fa-solid fa-language text-cyan-400"></i> Unified Incident Intelligence Summary
                   </span>
-                  <!-- Language Selector for Operator -->
-                  <div class="flex items-center gap-1 text-[11px]">
+                  <!-- Language Selector & Copy Button for Operator -->
+                  <div class="flex items-center gap-1.5 text-[11px]">
+                    <button onclick="copyUnifiedSummary()" id="copy-summary-btn" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-[10px] flex items-center gap-1 transition" title="Copy Summary to Clipboard">
+                      <i class="fa-regular fa-copy"></i>
+                      <span>Copy</span>
+                    </button>
                     <span class="text-slate-400">View In:</span>
                     <select id="summary-lang-select" onchange="translateUnifiedSummary()" class="rounded bg-slate-900 border border-slate-700 text-cyan-300 text-[11px] px-1.5 py-0.5 focus:outline-none">
                       <option value="English">English</option>
@@ -498,9 +517,9 @@
 
       <div class="flex justify-end space-x-2 pt-3 border-t border-eoc-border">
         <button onclick="closeSubmitModal()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">Cancel</button>
-        <button onclick="submitModalReport()" class="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs flex items-center gap-1.5">
-          <i class="fa-solid fa-paper-plane"></i>
-          <span>Process & Ingest</span>
+        <button id="modal-submit-btn" onclick="submitModalReport()" class="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs flex items-center gap-1.5 transition">
+          <i id="submit-icon" class="fa-solid fa-paper-plane"></i>
+          <span id="submit-btn-text">Process & Ingest</span>
         </button>
       </div>
     </div>

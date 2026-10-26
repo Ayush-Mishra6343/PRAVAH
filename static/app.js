@@ -5,6 +5,8 @@ let currentSummaryOriginal = "";
 let map = null;
 let incidentMarkers = [];
 let isDemoRunning = false;
+let allIncidents = [];
+let currentFilter = 'ALL';
 
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
@@ -60,15 +62,16 @@ async function loadData() {
     ]);
 
     renderStatus(statusRes);
-    renderIncidents(incRes);
+    allIncidents = incRes || [];
+    applyIncidentFilters();
     renderInventory(invRes);
     renderRecommendations(recRes);
     renderActivity(actRes);
 
     if (selectedIncidentId) {
       loadIncidentDetail(selectedIncidentId);
-    } else if (incRes.length > 0) {
-      selectIncident(incRes[0].id);
+    } else if (allIncidents.length > 0) {
+      selectIncident(allIncidents[0].id);
     }
 
   } catch (err) {
@@ -126,17 +129,60 @@ async function toggleProviderMode() {
   }
 }
 
+// Incident Filtering & Search Controls
+function setIncidentFilter(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.incident-filter-btn').forEach(b => {
+    b.className = "incident-filter-btn px-2 py-0.5 rounded bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800";
+  });
+  const activeBtn = document.getElementById(`filter-btn-${filter}`);
+  if (activeBtn) {
+    if (filter === 'ALL') activeBtn.className = "incident-filter-btn px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-medium";
+    if (filter === 'CRITICAL') activeBtn.className = "incident-filter-btn px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 font-medium";
+    if (filter === 'CORROBORATED') activeBtn.className = "incident-filter-btn px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800 font-medium";
+    if (filter === 'CONFLICTING') activeBtn.className = "incident-filter-btn px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 font-medium";
+  }
+  applyIncidentFilters();
+}
+
+function filterIncidents() {
+  applyIncidentFilters();
+}
+
+function applyIncidentFilters() {
+  const searchTerm = (document.getElementById('incident-search-input')?.value || '').toLowerCase().trim();
+  
+  let filtered = allIncidents.filter(inc => {
+    // Status filter
+    if (currentFilter === 'CRITICAL' && inc.severity !== 'CRITICAL') return false;
+    if (currentFilter === 'CORROBORATED' && inc.status !== 'corroborated') return false;
+    if (currentFilter === 'CONFLICTING' && (!inc.has_contradiction && inc.status !== 'conflicting')) return false;
+
+    // Search term filter
+    if (searchTerm) {
+      const matchId = inc.id.toLowerCase().includes(searchTerm);
+      const matchTitle = (inc.title || '').toLowerCase().includes(searchTerm);
+      const matchLoc = (inc.location || '').toLowerCase().includes(searchTerm);
+      const matchLangs = (inc.languages || []).join(' ').toLowerCase().includes(searchTerm);
+      return matchId || matchTitle || matchLoc || matchLangs;
+    }
+    return true;
+  });
+
+  renderIncidents(filtered);
+}
+
 // Render Incident Feed
 function renderIncidents(incidents) {
   const container = document.getElementById('incident-list');
   const countBadge = document.getElementById('incident-count-badge');
-  countBadge.innerText = `${incidents.length} Active`;
+  countBadge.innerText = `${incidents.length} / ${allIncidents.length} Incidents`;
 
   if (!incidents || incidents.length === 0) {
     container.innerHTML = `
       <div class="text-center py-12 text-slate-500 text-xs">
         <i class="fa-solid fa-radar text-2xl mb-2 text-slate-600 block"></i>
-        No active incidents detected.<br>Click "Multilingual Test (4+1)" or Ingest a Report.
+        ${allIncidents.length === 0 ? 'No active incidents detected.<br>Click "Multilingual Test (4+1)" or Ingest a Report.' : 'No incidents match current filter criteria.'}
       </div>
     `;
     clearMapMarkers();
@@ -194,7 +240,7 @@ function renderIncidents(incidents) {
   updateMapMarkers(incidents);
 }
 
-// Update Map Markers
+// Update Map Markers with Hazard Zone Buffers
 function updateMapMarkers(incidents) {
   if (!map) return;
   clearMapMarkers();
@@ -213,6 +259,18 @@ function updateMapMarkers(incidents) {
     const isConflict = inc.has_contradiction;
     const markerColor = isConflict ? "#F59E0B" : (inc.severity === "CRITICAL" ? "#EF4444" : "#0284C7");
 
+    // Tactical Hazard Radius Circle
+    const hazardRadius = isConflict ? 450 : (inc.severity === "CRITICAL" ? 550 : 350);
+    const circle = L.circle([lat, lng], {
+      radius: hazardRadius,
+      color: markerColor,
+      fillColor: markerColor,
+      fillOpacity: 0.12,
+      weight: 1.5,
+      dashArray: isConflict ? '4, 4' : null
+    }).addTo(map);
+    incidentMarkers.push(circle);
+
     const icon = L.divIcon({
       className: 'custom-div-icon',
       html: `<div style="background-color:${markerColor}; color:white; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:2px solid white; font-size:12px; box-shadow:0 0 10px ${markerColor}99;"><i class="fa-solid fa-triangle-exclamation"></i></div>`,
@@ -225,7 +283,8 @@ function updateMapMarkers(incidents) {
         <div style="font-size:11px; color:#F1F5F9;">
           <b>${inc.id}: ${inc.title}</b><br>
           <span>Status: <b>${inc.status}</b></span><br>
-          <span>Location: ${inc.location}</span>
+          <span>Location: ${inc.location}</span><br>
+          <span style="color:${markerColor};">Hazard Zone: ${hazardRadius}m</span>
         </div>
       `);
 
@@ -293,6 +352,11 @@ async function loadIncidentDetail(id) {
           <div class="flex items-center justify-between">
             <span class="font-mono font-bold text-cyan-400">${r.id}</span>
             <div class="flex items-center gap-1.5 text-[10px]">
+              <button onclick="speakReportText(this, '${encodeURIComponent(r.text)}', '${r.language}')" 
+                      class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-slate-700 text-[10px] flex items-center gap-1 transition" 
+                      title="Listen in Native Voice">
+                <i class="fa-solid fa-volume-high"></i> <span>Listen</span>
+              </button>
               <span class="px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 font-bold">${r.language}</span>
               <span class="text-slate-500">${new Date(r.timestamp).toLocaleTimeString()}</span>
             </div>
@@ -350,6 +414,67 @@ async function loadIncidentDetail(id) {
   } catch (err) {
     console.error("Failed to load incident detail:", err);
   }
+}
+
+// Text-to-Speech Playback for Native Reports
+function speakReportText(buttonElem, encodedText, language) {
+  if (!('speechSynthesis' in window)) {
+    alert("Speech synthesis is not supported in this browser.");
+    return;
+  }
+
+  const text = decodeURIComponent(encodedText);
+  window.speechSynthesis.cancel(); // Stop any previous speech
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  const langMap = {
+    'Hindi': 'hi-IN',
+    'Bengali': 'bn-IN',
+    'Tamil': 'ta-IN',
+    'Telugu': 'te-IN',
+    'Marathi': 'mr-IN',
+    'Gujarati': 'gu-IN',
+    'Kannada': 'kn-IN',
+    'Malayalam': 'ml-IN',
+    'Punjabi': 'pa-IN',
+    'English': 'en-IN'
+  };
+  utterance.lang = langMap[language] || 'en-IN';
+  utterance.rate = 0.95;
+
+  const originalHtml = buttonElem.innerHTML;
+  buttonElem.innerHTML = `<i class="fa-solid fa-volume-high text-emerald-400 animate-pulse"></i> <span class="text-emerald-400">Playing...</span>`;
+  buttonElem.disabled = true;
+
+  utterance.onend = () => {
+    buttonElem.innerHTML = originalHtml;
+    buttonElem.disabled = false;
+  };
+  utterance.onerror = () => {
+    buttonElem.innerHTML = originalHtml;
+    buttonElem.disabled = false;
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+// Copy Unified Incident Summary to Clipboard
+function copyUnifiedSummary() {
+  const text = document.getElementById('unified-summary-text')?.innerText || '';
+  if (!text) return;
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-summary-btn');
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> <span class="text-emerald-400">Copied!</span>`;
+      setTimeout(() => { btn.innerHTML = orig; }, 2000);
+    }
+    showToast("Incident summary copied to clipboard.");
+  }).catch(err => {
+    console.error("Copy failed:", err);
+    showToast("Could not access clipboard.");
+  });
 }
 
 // Translate Unified Summary on Language Switch
@@ -740,6 +865,16 @@ async function submitModalReport() {
     return;
   }
 
+  const submitBtn = document.getElementById('modal-submit-btn');
+  const submitIcon = document.getElementById('submit-icon');
+  const submitText = document.getElementById('submit-btn-text');
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    if (submitIcon) submitIcon.className = "fa-solid fa-circle-notch fa-spin";
+    if (submitText) submitText.innerText = "Extracting via Sarvam AI...";
+  }
+
   try {
     const res = await fetch('/api/reports', {
       method: 'POST',
@@ -749,11 +884,18 @@ async function submitModalReport() {
     const result = await res.json();
     closeSubmitModal();
     document.getElementById('modal-text').value = '';
+    document.getElementById('modal-location').value = '';
     loadData();
     showToast(`Report ${result.report_id} ingested in ${result.extraction.language}!`);
   } catch (err) {
     console.error(err);
     alert("Failed to ingest report.");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      if (submitIcon) submitIcon.className = "fa-solid fa-paper-plane";
+      if (submitText) submitText.innerText = "Process & Ingest";
+    }
   }
 }
 

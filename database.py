@@ -10,14 +10,13 @@ db_lock = threading.Lock()
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA busy_timeout=30000;")
-    conn.execute("PRAGMA synchronous=NORMAL;")
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
     conn = get_connection()
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
     cursor = conn.cursor()
 
     # Reports table with immutable original text and translated/normalized text
@@ -157,15 +156,16 @@ def log_activity(event_type: str, title: str, description: str, severity: str = 
         conn.close()
 
 def reset_database():
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS reports")
-    cursor.execute("DROP TABLE IF EXISTS incidents")
-    cursor.execute("DROP TABLE IF EXISTS evidence_claims")
-    cursor.execute("DROP TABLE IF EXISTS inventory")
-    cursor.execute("DROP TABLE IF EXISTS recommendations")
-    cursor.execute("DROP TABLE IF EXISTS activity_logs")
-    conn.commit()
-    conn.close()
-    init_db()
-    log_activity("SYSTEM_RESET", "Database Reset", "System reset to initial demonstration state with clean inventory.", "WARNING")
+    with db_lock:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM reports")
+        cursor.execute("DELETE FROM incidents")
+        cursor.execute("DELETE FROM evidence_claims")
+        cursor.execute("DELETE FROM inventory")
+        cursor.execute("DELETE FROM recommendations")
+        cursor.execute("DELETE FROM activity_logs")
+        seed_inventory(cursor)
+        conn.commit()
+        conn.close()
+        log_activity("SYSTEM_RESET", "Database Reset", "System reset to initial demonstration state with clean inventory.", "WARNING")
