@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PRAVAHA // Multilingual Crisis Intelligence System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="/static/style.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            eoc: {
+              bg: '#080C15',
+              card: '#0F172A',
+              border: '#1E293B',
+              accent: '#0284C7',
+              warning: '#F59E0B',
+              danger: '#EF4444',
+              success: '#10B981',
+              text: '#F1F5F9',
+              muted: '#94A3B8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-eoc-bg text-eoc-text min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500 selection:text-white">
+
+  <!-- TOP EOC APP BAR -->
+  <header class="bg-slate-900/90 backdrop-blur border-b border-eoc-border sticky top-0 z-50 px-4 py-2.5">
+    <div class="max-w-[1700px] mx-auto flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Brand & Mission Status -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <i class="fa-solid fa-water text-white text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="font-black tracking-wider text-lg text-white font-mono uppercase">PRAVAHA</h1>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800 font-mono">10-Lang Sovereign EOC</span>
+            <span class="flex h-2 w-2 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+          </div>
+          <p class="text-xs text-eoc-muted flex items-center gap-1.5">
+            <span>India Multilingual Flood Crisis</span>
+            <span class="text-slate-600">•</span>
+            <span class="text-cyan-400">Powered by Sarvam AI & Resilient Fallback</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Live Provider Status Badge -->
+      <div class="flex items-center gap-2 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5">
+        <div id="provider-pulse" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
+        <div class="text-xs">
+          <span class="text-slate-400">AI Core:</span>
+          <span id="provider-name" class="font-mono font-bold text-cyan-300 ml-1">Checking...</span>
+        </div>
+        <button id="toggle-provider-btn" onclick="toggleProviderMode()" title="Toggle Fallback / Simulated Outage Mode" class="ml-2 text-xs px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+          <i class="fa-solid fa-arrows-rotate mr-1"></i>Toggle Fallback
+        </button>
+      </div>
+
+      <!-- Action & Demo Controls -->
+      <div class="flex items-center space-x-2">
+        <button onclick="openSubmitModal()" class="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs flex items-center gap-2 shadow-lg shadow-cyan-600/20 transition">
+          <i class="fa-solid fa-bullhorn"></i>
+          <span>Ingest Report</span>
+        </button>
+        <button onclick="runMultilingualAcceptanceTest()" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition" title="Acceptance Test: 4 languages at school + 1 distinct village">
+          <i class="fa-solid fa-language"></i>
+          <span>Multilingual Test (4+1)</span>
+        </button>
+        <button onclick="runFullDemoScenario()" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition">
+          <i class="fa-solid fa-play"></i>
+          <span>5-Step Scenario</span>
+        </button>
+        <button onclick="resetSystem()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-800 text-xs flex items-center gap-1.5 transition" title="Clear and Reset Demonstration">
+          <i class="fa-solid fa-arrow-rotate-left"></i>
+          <span>Reset</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LIVE MULTILINGUAL DISTRIBUTION & WORKFLOW STATUS BAR -->
+  <section class="bg-slate-950 border-b border-eoc-border px-4 py-2">
+    <div class="max-w-[1700px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-3 text-xs">
+      
+      <!-- Actual Language Distribution Badge -->
+      <div class="flex items-center gap-2 font-mono text-slate-400 flex-wrap">
+        <i class="fa-solid fa-globe text-cyan-400"></i>
+        <span class="font-bold text-slate-200">LANGUAGES LOGGED:</span>
+        <div id="language-pills" class="flex items-center gap-1.5 flex-wrap">
+          <span class="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">None yet</span>
+        </div>
+      </div>
+
+      <!-- Step Controls -->
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span id="demo-status-text" class="text-cyan-300 font-mono mr-2">Ready</span>
+        <button onclick="runStep(1)" class="demo-step-btn px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs flex items-center gap-1.5" id="step-btn-1">
+          <span class="w-4 h-4 rounded-full bg-slate-800 text-[10px] flex items-center justify-center font-bold">1</span>
+          <span>Hindi</span>
+        </button>
+        <i class="fa-solid fa-chevron-right text-[10px] text-slate-700"></i>
+
+        <button onclick="runStep(2)" class="demo-step-btn px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs flex items-center gap-1.5" id="step-btn-2">
+          <span class="w-4 h-4 rounded-full bg-slate-800 text-[10px] flex items-center justify-center font-bold">2</span>
+          <span>English</span>
+        </button>
+        <i class="fa-solid fa-chevron-right text-[10px] text-slate-700"></i>
+
+        <button onclick="runStep(3)" class="demo-step-btn px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs flex items-center gap-1.5" id="step-btn-3">
+          <span class="w-4 h-4 rounded-full bg-slate-800 text-[10px] flex items-center justify-center font-bold">3</span>
+          <span>Corroborate</span>
+        </button>
+        <i class="fa-solid fa-chevron-right text-[10px] text-slate-700"></i>
+
+        <button onclick="runStep(4)" class="demo-step-btn px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs flex items-center gap-1.5" id="step-btn-4">
+          <span class="w-4 h-4 rounded-full bg-slate-800 text-[10px] flex items-center justify-center font-bold">4</span>
+          <span>Road Contradiction</span>
+        </button>
+        <i class="fa-solid fa-chevron-right text-[10px] text-slate-700"></i>
+
+        <button onclick="runStep(5)" class="demo-step-btn px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs flex items-center gap-1.5" id="step-btn-5">
+          <span class="w-4 h-4 rounded-full bg-slate-800 text-[10px] flex items-center justify-center font-bold">5</span>
+          <span>Safe Allocation</span>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- MAIN OPERATIONAL DASHBOARD -->
+  <main class="flex-1 max-w-[1700px] w-full mx-auto p-4 space-y-4">
+    
+    <!-- KPI SUMMARY BAR -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      
+      <div class="bg-eoc-card border border-eoc-border rounded-xl p-3.5 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-400">Total Raw Reports</p>
+          <p id="kpi-reports" class="text-2xl font-black text-white font-mono mt-0.5">0</p>
+          <span class="text-[11px] text-cyan-400 flex items-center gap-1 mt-1">
+            <i class="fa-solid fa-language"></i> 10 Indic Scripts Supported
+          </span>
+        </div>
+        <div class="w-12 h-12 rounded-lg bg-blue-950/60 border border-blue-900/60 flex items-center justify-center text-blue-400">
+          <i class="fa-solid fa-file-lines text-xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-eoc-card border border-eoc-border rounded-xl p-3.5 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-400">Active Incidents</p>
+          <p id="kpi-incidents" class="text-2xl font-black text-cyan-300 font-mono mt-0.5">0</p>
+          <span class="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
+            <i class="fa-solid fa-shield-halved"></i> Grouped & Traceable
+          </span>
+        </div>
+        <div class="w-12 h-12 rounded-lg bg-cyan-950/60 border border-cyan-900/60 flex items-center justify-center text-cyan-400">
+          <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-eoc-card border border-amber-900/40 rounded-xl p-3.5 flex items-center justify-between bg-gradient-to-r from-amber-950/10 to-transparent">
+        <div>
+          <p class="text-xs font-medium text-amber-300">Surfaced Contradictions</p>
+          <p id="kpi-contradictions" class="text-2xl font-black text-amber-400 font-mono mt-0.5">0</p>
+          <span class="text-[11px] text-amber-400 flex items-center gap-1 mt-1">
+            <i class="fa-solid fa-triangle-exclamation"></i> Road / Access Discrepancy
+          </span>
+        </div>
+        <div class="w-12 h-12 rounded-lg bg-amber-950/60 border border-amber-800/60 flex items-center justify-center text-amber-400">
+          <i class="fa-solid fa-scale-unbalanced text-xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-eoc-card border border-eoc-border rounded-xl p-3.5 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-400">Relief Proposals</p>
+          <p id="kpi-recommendations" class="text-2xl font-black text-emerald-400 font-mono mt-0.5">0</p>
+          <span class="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
+            <i class="fa-solid fa-truck-ramp-box"></i> Inventory Constrained
+          </span>
+        </div>
+        <div class="w-12 h-12 rounded-lg bg-emerald-950/60 border border-emerald-900/60 flex items-center justify-center text-emerald-400">
+          <i class="fa-solid fa-boxes-stacked text-xl"></i>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MAIN 3-COLUMN WORKSPACE -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      
+      <!-- LEFT COLUMN: INCIDENT FEED & CANDIDATE MATCHES (4 COLS) -->
+      <section class="lg:col-span-4 space-y-4">
+        
+        <div class="bg-eoc-card border border-eoc-border rounded-xl overflow-hidden flex flex-col h-[520px]">
+          <div class="px-4 py-3 border-b border-eoc-border flex items-center justify-between bg-slate-900/60">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-layer-group text-cyan-400 text-sm"></i>
+              <h2 class="font-bold text-sm text-slate-200 uppercase tracking-wide">Incident Feed</h2>
+            </div>
+            <span id="incident-count-badge" class="px-2 py-0.5 rounded-full bg-slate-800 text-[11px] font-mono text-slate-300">0 Active</span>
+          </div>
+
+          <div id="incident-list" class="flex-1 overflow-y-auto p-3 space-y-2.5">
+            <div class="text-center py-12 text-slate-500 text-xs">
+              <i class="fa-solid fa-radar text-2xl mb-2 text-slate-600 block"></i>
+              No active incidents detected.<br>Click "Multilingual Test (4+1)" or Ingest a Report.
+            </div>
+          </div>
+        </div>
+
+        <!-- Geographic Operations Map -->
+        <div class="bg-eoc-card border border-eoc-border rounded-xl overflow-hidden flex flex-col h-[280px]">
+          <div class="px-3.5 py-2 border-b border-eoc-border flex items-center justify-between bg-slate-900/60 text-xs">
+            <span class="font-bold text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-map-location-dot text-cyan-400"></i> Tactical Sector Map
+            </span>
+            <span class="text-[10px] text-slate-400 font-mono">25.5941° N, 85.1376° E</span>
+          </div>
+          <div id="map" class="flex-1 w-full bg-slate-950"></div>
+        </div>
+
+      </section>
+
+      <!-- CENTER COLUMN: EVIDENCE LEDGER & CONTRADICTION INSPECTOR (4 COLS) -->
+      <section class="lg:col-span-4 space-y-4">
+        
+        <div class="bg-eoc-card border border-eoc-border rounded-xl overflow-hidden flex flex-col h-[816px]">
+          <div class="px-4 py-3 border-b border-eoc-border flex items-center justify-between bg-slate-900/60">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-fingerprint text-cyan-400 text-sm"></i>
+              <h2 class="font-bold text-sm text-slate-200 uppercase tracking-wide">Evidence Ledger</h2>
+            </div>
+            <span id="selected-incident-badge" class="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 text-[11px] font-mono">None Selected</span>
+          </div>
+
+          <div id="evidence-inspector" class="flex-1 overflow-y-auto p-4 space-y-4">
+            
+            <div id="evidence-empty" class="text-center py-20 text-slate-500 text-xs">
+              <i class="fa-solid fa-magnifying-glass-chart text-3xl mb-3 text-slate-600 block"></i>
+              Select an incident from the feed to inspect raw multilingual reports, claims, unified summaries, and surfaced contradictions.
+            </div>
+
+            <div id="evidence-content" class="hidden space-y-4">
+              
+              <!-- Contradiction Alert Box -->
+              <div id="contradiction-banner" class="hidden rounded-xl border border-amber-600/70 bg-gradient-to-r from-amber-950/60 to-slate-900 p-3.5 space-y-2">
+                <div class="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <i class="fa-solid fa-triangle-exclamation text-sm animate-bounce"></i>
+                  <span>CONTRADICTORY EVIDENCE DETECTED</span>
+                </div>
+                <p id="contradiction-text" class="text-xs text-amber-100/90 leading-relaxed font-mono">
+                  Report claims road is open, conflicting with reports of rising water and trapped families.
+                </p>
+                <div class="bg-amber-950/80 border border-amber-800/80 rounded px-2.5 py-1.5 text-[11px] text-amber-200">
+                  <span class="font-bold">Safety Rule:</span> System will NOT declare route safe automatically. Ground scout verification required.
+                </div>
+                <div class="flex gap-2 pt-1">
+                  <button onclick="resolveContradiction()" class="text-xs px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold transition">
+                    <i class="fa-solid fa-check-double mr-1"></i>Resolve by Operator
+                  </button>
+                </div>
+              </div>
+
+              <!-- Incident Details Card -->
+              <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                  <h3 id="detail-title" class="font-bold text-sm text-white">Title</h3>
+                  <span id="detail-status" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase">Status</span>
+                </div>
+                <p id="detail-location" class="text-xs text-slate-400 flex items-center gap-1.5">
+                  <i class="fa-solid fa-location-dot text-rose-400"></i> <span>Location</span>
+                </p>
+                <div class="flex items-center gap-2 pt-1">
+                  <button onclick="verifyIncident()" class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-cyan-950 text-cyan-300 border border-slate-700 hover:border-cyan-700 transition">
+                    <i class="fa-solid fa-user-check mr-1"></i>Mark Human-Reviewed
+                  </button>
+                </div>
+              </div>
+
+              <!-- Unified Incident Summary (with Language Selector) -->
+              <div class="bg-gradient-to-br from-slate-950 to-slate-900 border border-cyan-900/50 rounded-xl p-3.5 space-y-2">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-bold text-cyan-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-language text-cyan-400"></i> Unified Incident Intelligence Summary
+                  </span>
+                  <!-- Language Selector for Operator -->
+                  <div class="flex items-center gap-1 text-[11px]">
+                    <span class="text-slate-400">View In:</span>
+                    <select id="summary-lang-select" onchange="translateUnifiedSummary()" class="rounded bg-slate-900 border border-slate-700 text-cyan-300 text-[11px] px-1.5 py-0.5 focus:outline-none">
+                      <option value="English">English</option>
+                      <option value="Hindi">Hindi (हिंदी)</option>
+                      <option value="Bengali">Bengali (বাংলা)</option>
+                      <option value="Tamil">Tamil (தமிழ்)</option>
+                      <option value="Telugu">Telugu (తెలుగు)</option>
+                      <option value="Marathi">Marathi (मराठी)</option>
+                      <option value="Gujarati">Gujarati (ગુજરાતી)</option>
+                      <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
+                      <option value="Malayalam">Malayalam (മലയാളം)</option>
+                      <option value="Punjabi">Punjabi (ਪੰਜਾਬੀ)</option>
+                    </select>
+                  </div>
+                </div>
+                <p id="unified-summary-text" class="text-xs text-slate-200 leading-relaxed font-sans bg-slate-950/80 p-2.5 rounded-lg border border-slate-800">
+                  Loading unified intelligence summary...
+                </p>
+                <div class="text-[10px] text-slate-500 flex items-center justify-between pt-0.5">
+                  <span>Languages Contributing: <b id="contributing-langs-text" class="text-slate-300">None</b></span>
+                  <span id="summary-trans-badge" class="font-mono text-cyan-400">Sarvam Mayura:v1</span>
+                </div>
+              </div>
+
+              <!-- Linked Reports Audit Trail -->
+              <div>
+                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                  <span>Linked Raw Reports (<span id="linked-report-count">0</span>)</span>
+                  <span class="text-[10px] text-slate-500 font-normal">Immutable Multilingual Records</span>
+                </h4>
+                <div id="linked-reports-list" class="space-y-2.5">
+                  <!-- Dynamically populated reports -->
+                </div>
+              </div>
+
+              <!-- Extracted Claims Matrix -->
+              <div>
+                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Extracted Claims & Evidence</h4>
+                <div id="claims-matrix" class="space-y-1.5">
+                  <!-- Dynamically populated claims -->
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- RIGHT COLUMN: RELIEF INVENTORY & ACTIVITY LOG (4 COLS) -->
+      <section class="lg:col-span-4 space-y-4">
+        
+        <div class="bg-eoc-card border border-eoc-border rounded-xl overflow-hidden flex flex-col h-[460px]">
+          <div class="px-4 py-3 border-b border-eoc-border flex items-center justify-between bg-slate-900/60">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-truck-fast text-cyan-400 text-sm"></i>
+              <h2 class="font-bold text-sm text-slate-200 uppercase tracking-wide">Resource Dispatch Center</h2>
+            </div>
+            <span class="text-[10px] text-amber-400 font-mono bg-amber-950/60 border border-amber-800/80 px-2 py-0.5 rounded">SIMULATED LOGISTICS</span>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-3.5 space-y-4">
+            
+            <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-3 space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-slate-300">Simulated Relief Stock</span>
+                <span class="text-[10px] text-slate-400">Depot A & NDRF</span>
+              </div>
+              <div id="inventory-meters" class="grid grid-cols-2 gap-2 pt-1">
+                <!-- Dynamically populated inventory meters -->
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Traceable Recommendations</h3>
+                <span class="text-[10px] text-slate-500">Constraint-Aware</span>
+              </div>
+              <div id="recommendations-list" class="space-y-2.5">
+                <div class="text-center py-6 text-slate-500 text-xs">
+                  No active recommendations pending.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Activity Timeline -->
+        <div class="bg-eoc-card border border-eoc-border rounded-xl overflow-hidden flex flex-col h-[340px]">
+          <div class="px-4 py-2.5 border-b border-eoc-border flex items-center justify-between bg-slate-900/60">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-timeline text-cyan-400 text-sm"></i>
+              <h2 class="font-bold text-sm text-slate-200 uppercase tracking-wide">Audit & Activity Log</h2>
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono">Real-Time Trace</span>
+          </div>
+          <div id="activity-log" class="flex-1 overflow-y-auto p-3 space-y-2 text-xs font-mono">
+            <!-- Dynamically populated logs -->
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- REPORT SUBMISSION MODAL -->
+  <div id="submit-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-eoc-card border border-eoc-border rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-eoc-border pb-3">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-bullhorn text-cyan-400"></i>
+          <h3 class="font-bold text-slate-200">Ingest Multilingual Emergency Report</h3>
+        </div>
+        <button onclick="closeSubmitModal()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Quick Multilingual Test Templates -->
+      <div class="space-y-1.5">
+        <label class="text-[11px] font-semibold text-slate-400">Quick Test Templates (Same School vs Rampur Village):</label>
+        <div class="grid grid-cols-2 gap-1.5 text-xs">
+          <button onclick="applySample(1)" class="text-left px-2 py-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300">
+            <span class="font-bold text-cyan-400 block">1. Hindi (School):</span> "पानी तेजी से बढ़ रहा है..."
+          </button>
+          <button onclick="applySample(2)" class="text-left px-2 py-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300">
+            <span class="font-bold text-indigo-400 block">2. Bengali (School):</span> "জল দ্রুত বাড়ছে..."
+          </button>
+          <button onclick="applySample(4)" class="text-left px-2 py-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300">
+            <span class="font-bold text-emerald-400 block">3. Tamil (School):</span> "தண்ணீர் வேகமாக உயர்ந்து..."
+          </button>
+          <button onclick="applySample(5)" class="text-left px-2 py-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300">
+            <span class="font-bold text-rose-400 block">4. Distinct Village:</span> "Rampur village flooded..."
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-3 pt-2">
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-medium text-slate-300">Original Report Message*</label>
+            <div class="flex items-center gap-2">
+              <span id="voice-indicator" class="hidden text-rose-400 font-mono text-[10px] animate-pulse">
+                <i class="fa-solid fa-circle text-[8px] mr-1"></i>Listening...
+              </span>
+              <button type="button" id="voice-btn" onclick="toggleVoiceRecording()" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-slate-700 text-[11px] flex items-center gap-1 transition" title="Dictate in selected language">
+                <i class="fa-solid fa-microphone"></i>
+                <span id="voice-btn-label">Voice Input</span>
+              </button>
+            </div>
+          </div>
+          <textarea id="modal-text" rows="3" class="w-full rounded-lg bg-slate-950 border border-slate-700 text-white text-xs p-2.5 focus:border-cyan-500 focus:outline-none" placeholder="Type report or dictate via microphone in Hindi, Bengali, Tamil, English..."></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- 10 Languages Selector -->
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Language</label>
+            <select id="modal-language" class="w-full rounded-lg bg-slate-950 border border-slate-700 text-white text-xs p-2 focus:border-cyan-500 focus:outline-none">
+              <option value="Auto">Auto-Detect</option>
+              <option value="Hindi">Hindi (हिंदी)</option>
+              <option value="English">English</option>
+              <option value="Bengali">Bengali (বাংলা)</option>
+              <option value="Tamil">Tamil (தமிழ்)</option>
+              <option value="Telugu">Telugu (తెలుగు)</option>
+              <option value="Marathi">Marathi (मराठी)</option>
+              <option value="Gujarati">Gujarati (ગુજરાતી)</option>
+              <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
+              <option value="Malayalam">Malayalam (മലയാളം)</option>
+              <option value="Punjabi">Punjabi (ਪੰਜਾਬੀ)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Source Type</label>
+            <select id="modal-source" class="w-full rounded-lg bg-slate-950 border border-slate-700 text-white text-xs p-2 focus:border-cyan-500 focus:outline-none">
+              <option value="Citizen SMS">Citizen SMS</option>
+              <option value="Helpline Call">Helpline Call</option>
+              <option value="Field Volunteer">Field Volunteer</option>
+              <option value="Social Media">Social Media</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Location / Landmark (Optional)</label>
+          <input type="text" id="modal-location" class="w-full rounded-lg bg-slate-950 border border-slate-700 text-white text-xs p-2 focus:border-cyan-500 focus:outline-none" placeholder="e.g. Near Government Primary School, Sector 4">
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-3 border-t border-eoc-border">
+        <button onclick="closeSubmitModal()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">Cancel</button>
+        <button onclick="submitModalReport()" class="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs flex items-center gap-1.5">
+          <i class="fa-solid fa-paper-plane"></i>
+          <span>Process & Ingest</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-slate-950 border-t border-eoc-border px-4 py-2 text-center text-[11px] text-slate-500">
+    PRAVAHA Sovereign Crisis Intelligence System • Multilingual Incident Resolution Across 10 Indian Languages • Powered by Sarvam AI & Resilient Crisis Fallback
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

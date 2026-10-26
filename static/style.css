@@ -1,0 +1,50 @@
+/* Custom Dark Navy Emergency Operations Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #080C15;
+}
+::-webkit-scrollbar-thumb {
+  background: #1E293B;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Pulsing alert for contradictions */
+@keyframes glow-amber {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+  }
+}
+
+.contradiction-active {
+  animation: glow-amber 2s infinite;
+}
+
+/* Leaflet Dark Theme Overrides */
+.leaflet-container {
+  background: #080C15 !important;
+  font-family: inherit;
+}
+.leaflet-bar a {
+  background-color: #0F172A !important;
+  border-color: #1E293B !important;
+  color: #94A3B8 !important;
+}
+.leaflet-popup-content-wrapper {
+  background-color: #0F172A !important;
+  color: #F1F5F9 !important;
+  border: 1px solid #1E293B;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+}
+.leaflet-popup-tip {
+  background-color: #0F172A !important;
+}
